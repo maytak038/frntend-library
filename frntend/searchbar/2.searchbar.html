@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Book Details with Search</title>
+  <style>
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      padding: 8px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    th {
+      background-color: #f2f2f2;
+    }
+    .filter-container {
+      margin-top: 10px;
+    }
+
+    .filter-container label {
+      margin-right: 5px;
+    }
+    .highlight {
+      background-color: yellow;
+    }
+
+    .search-container {
+      margin-top: 10px;
+    }
+
+    .search-container input[type="text"] {
+      padding: 8px;
+      border: none;
+      border-radius: 5px;
+    }
+
+    .search-recommendations {
+      margin-top: 10px;
+    }
+
+    .search-recommendations div {
+      padding: 4px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      display: inline-block;
+      margin-right: 5px;
+    }
+
+    .borrow-btn,
+    .return-btn {
+      cursor: pointer;
+    }
+  </style>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const searchInput = document.getElementById("search-input");
+      const table = document.getElementById("book-table");
+
+      // Function to handle search input changes
+      function handleSearchInput() {
+        const searchQuery = searchInput.value.trim().toLowerCase();
+        const rows = table.getElementsByTagName("tr");
+
+        if (searchQuery === "") {
+          for (let i = 1; i < rows.length; i++) {
+            const row = rows[i];
+            row.classList.remove("highlight");
+          }
+          return;
+        }
+
+        const recentSearches =
+          JSON.parse(localStorage.getItem("recentSearches")) || [];
+        recentSearches.unshift(searchQuery);
+        const uniqueSearches = [...new Set(recentSearches)];
+        if (uniqueSearches.length > 5) {
+          uniqueSearches.pop();
+        }
+        localStorage.setItem("recentSearches", JSON.stringify(uniqueSearches));
+
+        const recommendations = uniqueSearches
+          .filter((item) => item !== searchQuery)
+          .slice(0, 5);
+
+        const filteredRows = [];
+
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          const cells = row.getElementsByTagName("td");
+          let isMatched = false;
+
+          for (let j = 0; j < cells.length; j++) {
+            const cellText = cells[j].textContent.toLowerCase();
+            if (cellText.includes(searchQuery)) {
+              isMatched = true;
+              break;
+            }
+          }
+
+          if (isMatched) {
+            filteredRows.push(row);
+            row.classList.add("highlight");
+          } else {
+            row.classList.remove("highlight");
+          }
+        }
+
+        const filteredAndSortedRows = sortRows(filteredRows);
+
+        updateRecommendations(recommendations);
+        updateTableBody(filteredAndSortedRows);
+      }
+
+      function sortRows(rows) {
+        const sortSelect = document.getElementById("sort-select");
+        const sortValue = sortSelect.value;
+
+        switch (sortValue) {
+          case "title":
+            rows.sort((a, b) =>
+              a.cells[0].textContent.localeCompare(b.cells[0].textContent)
+            );
+            break;
+          case "author":
+      rows.sort((a, b) => a.cells[1].textContent.localeCompare(b.cells[1].textContent));
+      break;
+    case "date":
+      rows.sort((a, b) => parseInt(a.cells[2].textContent) - parseInt(b.cells[2].textContent));
+      break;
+  }
+
+  return rows;
+}
+
+function updateTableBody(rows) {
+  const tableBody = table.getElementsByTagName("tbody")[0];
+  tableBody.innerHTML = "";
+
+  rows.forEach(row => {
+    tableBody.appendChild(row);
+  });
+}
+
+
+function updateRecommendations(recommendations) {
+  const recommendationsContainer = document.getElementById("recommendations");
+  recommendationsContainer.innerHTML = "";
+
+  recommendations.forEach(item => {
+    const suggestion = document.createElement("div");
+    suggestion.textContent = item;
+    recommendationsContainer.appendChild(suggestion);
+  });
+}
+
+// Initialize recommendations on page load
+document.addEventListener("DOMContentLoaded", function() {
+  const recommendations = JSON.parse(localStorage.getItem("recentSearches")) || [];
+  updateRecommendations(recommendations);
+});
+
+
+
+  // Event listener for search input changes
+  searchInput.addEventListener("input", handleSearchInput);
+});
+
+function handleBorrowBook(button, index) {
+  const row = button.parentNode.parentNode;
+  const copiesCell = row.querySelector(".copies");
+  const booksBorrowedCell = row.querySelector(".books-borrowed");
+
+  const copies = parseInt(copiesCell.textContent);
+  const booksBorrowed = parseInt(booksBorrowedCell.textContent);
+
+  if (booksBorrowed > 0) {
+    alert("Please return the book you borrowed to borrow another book.");
+    return;
+  }
+
+  if (copies > 0) {
+    copiesCell.textContent = copies - 1;
+    booksBorrowedCell.textContent = booksBorrowed + 1;
+  }
+}
+
+
+function handleReturnBook(button, index) {
+  const row = button.parentNode.parentNode;
+  const copiesElement = row.querySelector('.copies');
+  const booksBorrowedElement = row.querySelector('.books-borrowed');
+  const copies = parseInt(copiesElement.textContent);
+
+  if (copies < 7 && booksBorrowedElement.textContent > 0) {
+    copiesElement.textContent = copies + 1;
+    booksBorrowedElement.textContent = parseInt(booksBorrowedElement.textContent) - 1;
+  }
+}
+</script>
+</head>
+<body>
+  <div class="search-container">
+    <div id="recommendations" class="search-recommendations"></div>
+
+    <input type="text" id="search-input" placeholder="Search...">
+  </div>
+  <div class="filter-container">
+    <label for="sort-select">Sort by:</label>
+    <select id="sort-select">
+      <option value="title">Title</option>
+      <option value="author">Author</option>
+      <option value="date">Publish Date</option>
+    </select>
+  </div>
+  <table id="book-table">
+    <thead>
+      <tr>
+        <th>Name of the Book</th>
+        <th>Name of the Author</th>
+        <th>Publish Date</th>
+        <th>Copies Available</th>
+        <th>Books Borrowed</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>The Great Gatsby</td>
+        <td>F. Scott Fitzgerald</td>
+        <td>1925</td>
+        <td class="copies">7</td>
+        <td class="books-borrowed">0</td>
+        <td>
+          <button class="borrow-btn" onclick="handleBorrowBook(this, 0)">Borrow</button>
+          <button class="return-btn" onclick="handleReturnBook(this, 0)">Return</button>
+        </td>
+      </tr>
+      <tr>
+        <td>To Kill a Mockingbird</td>
+        <td>Harper Lee</td>
+        <td>1960</td>
+        <td class="copies">6</td>
+        <td class="books-borrowed">1</td>
+        <td>
+          <button class="borrow-btn" onclick="handleBorrowBook(this, 1)">Borrow</button>
+          <button class="return-btn" onclick="handleReturnBook(this, 1)">Return</button>
+        </td>
+      </tr>
+      <tr>
+        <td>1984</td>
+        <td>George Orwell</td>
+        <td>1949</td>
+        <td class="copies">7</td>
+        <td class="books-borrowed">0</td>
+        <td>
+          <button class="borrow-btn" onclick="handleBorrowBook(this, 2)">Borrow</button>
+          <button class="return-btn" onclick="handleReturnBook(this, 2)">Return</button>
+        </td>
+      </tr>
+      <tr>
+        <td>The Catcher in the Rye</td>
+        <td>J.D. Salinger</td>
+        <td>1951</td>
+        <td class="copies">7</td>
+        <td class="books-borrowed">0</td>
+        <td>
+          <button class="borrow-btn" onclick="handleBorrowBook(this, 3)">Borrow</button>
+          <button class="return-btn" onclick="handleReturnBook(this, 3)">Return</button>
+        </td>
+      </tr>
+      <tr>
+        <td>Pride and Prejudice</td>
+        <td>Jane Austen</td>
+        <td>1813</td>
+        <td class="copies">5</td>
+        <td class="books-borrowed">2</td>
+        <td>
+          <button class="borrow-btn" onclick="handleBorrowBook(this, 4)">Borrow</button>
+          <button class="return-btn" onclick="handleReturnBook(this, 4)">Return</button>
+        </td>
+      </tr>
+      <tr>
+        <td>The Hobbit</td>
+        <td>J.R.R. Tolkien</td>
+        <td>1937</td>
+        <td class="copies">7</td>
+        <td class="books-borrowed">0</td>
+        <td>
+          <button class="borrow-btn" onclick="handleBorrowBook(this, 5)">Borrow</button>
+          <button class="return-btn" onclick="handleReturnBook(this, 5)">Return</button>
+        </td>
+      </tr>
+      <tr>
+        <td>Harry Potter and the Sorcerer's Stone</td>
+        <td>J.K. Rowling</td>
+        <td>1997</td>
+        <td class="copies">6</td>
+        <td class="books-borrowed">1</td>
+        <td>
+          <button class="borrow-btn" onclick="handleBorrowBook(this, 6)">Borrow</button>
+          <button class="return-btn" onclick="handleReturnBook(this, 6)">Return</button>
+        </td>
+      </tr>
+      <tr>
+        <td>Brave New World</td>
+        <td>Aldous Huxley</td>
+        <td>1932</td>
+        <td class="copies">7</td>
+        <td class="books-borrowed">0</td>
+        <td>
+          <button class="borrow-btn" onclick="handleBorrowBook(this, 7)">Borrow</button>
+          <button class="return-btn" onclick="handleReturnBook(this, 7)">Return</button>
+        </td>
+      </tr>
+      <tr>
+        <td>The Lord of the Rings</td>
+        <td>J.R.R. Tolkien</td>
+        <td>1954</td>
+        <td class="copies">7</td>
+        <td class="books-borrowed">0</td>
+        <td>
+          <button class="borrow-btn" onclick="handleBorrowBook(this, 8)">Borrow</button>
+          <button class="return-btn" onclick="handleReturnBook(this, 8)">Return</button>
+        </td>
+      </tr>
+      <tr>
+        <td>To the Lighthouse</td>
+        <td>Virginia Woolf</td>
+        <td>1927</td>
+        <td class="copies">4</td>
+        <td class="books-borrowed">3</td>
+        <td>
+          <button class="borrow-btn" onclick="handleBorrowBook(this, 9)">Borrow</button>
+          <button class="return-btn" onclick="handleReturnBook(this, 9)">Return</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>
